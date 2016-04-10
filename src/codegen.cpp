@@ -4854,7 +4854,7 @@ extern "C" void jl_fptr_to_llvm(jl_fptr_t fptr, jl_lambda_info_t *lam, int specs
         std::stringstream funcName;
         funcName << "jlsys_" << jl_symbol_name(lam->def->name) << "_" << globalUnique++;
         if (specsig) { // assumes !va
-            std::vector<Type*> fsig(0);
+            SmallVector<Type*, 8> fsig;
             jl_value_t *jlrettype = lam->rettype;
             bool retboxed;
             Type *rt;
