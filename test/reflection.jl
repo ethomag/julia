@@ -278,3 +278,44 @@ let
     @test methods(m,Tuple{Int, Int})[1]==@which MacroTest.@macrotest 1 1
     @test functionloc(@which @macrotest 1 1) == @functionloc @macrotest 1 1
 end
+
+# issue #15714
+# show variable names for slots and suppress spurious type warnings
+function f15714(array_var15714)
+    for index_var15714 in eachindex(array_var15714)
+        array_var15714[index_var15714] += 0
+    end
+end
+
+let str, li = code_typed(f15714, Tuple{Vector{Float32}})[1]
+    for str in (sprint(io->code_warntype(io, f15714, Tuple{Vector{Float32}})),
+                sprint(io->show(io, li)))
+        @test contains(str, "index_var15714@")
+        @test contains(str, "array_var15714@")
+        @test !contains(str, "Any")
+        @test !contains(str, "ANY")
+        # Check that we are not printing the bare slot numbers
+        for i in 1:length(li.slotnames)
+            @test !contains(str, "_@$i")
+        end
+    end
+    # Make sure printing an AST outside LambdaInfo still works.
+    str = sprint(io->show(io, Base.uncompressed_ast(li)))
+    index_var_found = false
+    array_var_found = false
+    # Check that we are printing the slot numbers when we don't have the context
+    # Use the variable names that we know should be present in the optimized AST
+    for i in 2:length(li.slotnames)
+        if li.slotnames[i] === :index_var15714
+            index_var_found = true
+        elseif li.slotnames[i] === :array_var15714
+            array_var_found = true
+        else
+            continue
+        end
+        @test contains(str, "_@$i")
+    end
+    # Make sure the variables are found and we actually tested something above.
+    @test index_var_found
+    @test array_var_found
+end

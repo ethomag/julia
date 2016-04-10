@@ -210,9 +210,11 @@ end
 
 function show(io::IO, l::LambdaInfo)
     println(io, "LambdaInfo for ", l.name)
+    # Fix slot names and types in function body
+    lambda_io = IOContext(io, :LAMBDAINFO => l)
     body = Expr(:body); body.args = uncompressed_ast(l)
     body.typ = l.rettype
-    show(io, body)
+    show(lambda_io, body)
 end
 
 function show_delim_array(io::IO, itr::Union{AbstractArray,SimpleVector}, op, delim, cl, delim_one,
@@ -496,10 +498,32 @@ show_unquoted(io::IO, ex::TopNode, ::Int, ::Int)        = print(io,"top(",ex.nam
 show_unquoted(io::IO, ex::GlobalRef, ::Int, ::Int)      = print(io, ex.mod, '.', ex.name)
 
 function show_unquoted(io::IO, ex::Slot, ::Int, ::Int)
-    print(io, "_", ex.id)
+    li = get(io, :LAMBDAINFO, false)
+    typ = ex.typ
+    slotid = ex.id
+    name_printed = false
+    if isa(li, LambdaInfo)
+        li = li::LambdaInfo
+        slotnames = li.slotnames
+        if isa(slotnames, Array) && slotid <= length(slotnames::Array)
+            name = li.slotnames[slotid]
+            print(io, name)
+            name_printed = true
+        end
+        slottypes = li.slottypes
+        if isa(slottypes, Array) && slotid <= length(slottypes::Array)
+            slottype = li.slottypes[slotid]
+            # The Slot in assignment can somehow have a Any type
+            slottype <: typ && (typ = slottype)
+        end
+    end
+    if !name_printed
+        print(io, '_')
+    end
+    print(io, '@', slotid)
     emphstate = typeemphasize(io)
-    if emphstate || ex.typ !== Any
-        show_expr_type(io, ex.typ, emphstate)
+    if emphstate || typ !== Any
+        show_expr_type(io, typ, emphstate)
     end
 end
 

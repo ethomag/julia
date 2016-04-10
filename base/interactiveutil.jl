@@ -237,7 +237,8 @@ function code_warntype(io::IO, f, t::ANY)
         print(emph_io, "\nBody:\n  ")
         body = Expr(:body); body.args = uncompressed_ast(li)
         body.typ = li.rettype
-        show_unquoted(emph_io, body, 2)
+        # Fix slot names and types in function body
+        show_unquoted(IOContext(emph_io, :LAMBDAINFO => li), body, 2)
         print(emph_io, '\n')
     end
     nothing
